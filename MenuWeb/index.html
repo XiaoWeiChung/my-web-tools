@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今天吃什么 - 家庭点餐助手</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">🍽️ 今天吃什么</h1>
+            <p class="subtitle">家庭点餐助手</p>
+        </div>
+    </header>
+
+    <!-- 搜索和随机选菜区域 -->
+    <section class="toolbar">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="搜索菜品..." autocomplete="off">
+            <button id="clearSearch" class="clear-btn" style="display:none;">✕</button>
+        </div>
+        <button id="randomBtn" class="random-btn">🎲 不知道吃什么？</button>
+    </section>
+
+    <!-- 随机选菜弹窗 -->
+    <div id="randomModal" class="modal-overlay" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>🎲 随机点餐</h2>
+                <button class="modal-close" onclick="closeRandomModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <label class="input-label">几个人用餐？</label>
+                <div class="people-selector">
+                    <button class="people-btn" onclick="setPeople(2)">2人</button>
+                    <button class="people-btn active" onclick="setPeople(3)">3人</button>
+                    <button class="people-btn" onclick="setPeople(4)">4人</button>
+                    <button class="people-btn" onclick="setPeople(5)">5人</button>
+                    <button class="people-btn" onclick="setPeople(6)">6人</button>
+                    <button class="people-btn" onclick="setPeople(7)">7人</button>
+                    <button class="people-btn" onclick="setPeople(8)">8人</button>
+                    <button class="people-btn" onclick="setPeople(9)">9人</button>
+                    <button class="people-btn" onclick="setPeople(10)">10人</button>
+                </div>
+                <button id="generateBtn" class="generate-btn" onclick="generateMenu()">✨ 生成今日菜单</button>
+                <div id="randomResult" class="random-result" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 菜品详情弹窗 -->
+    <div id="detailModal" class="modal-overlay" style="display:none;">
+        <div class="modal detail-modal">
+            <div class="modal-header">
+                <h2 id="detailTitle"></h2>
+                <button class="modal-close" onclick="closeDetailModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="detailEmoji" class="detail-emoji"></div>
+                <div class="detail-section">
+                    <h3>📝 所需材料</h3>
+                    <p id="detailIngredients"></p>
+                </div>
+                <div class="detail-section">
+                    <h3>👨‍🍳 做法步骤</h3>
+                    <div id="detailSteps"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分享菜单弹窗 -->
+    <div id="shareModal" class="modal-overlay" style="display:none;">
+        <div class="modal share-modal">
+            <div class="modal-header">
+                <h2>📋 今日菜单</h2>
+                <button class="modal-close" onclick="closeShareModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="shareContent" class="share-content"></div>
+                <div class="share-actions">
+                    <button class="share-btn copy-btn" onclick="copyMenu()">📋 复制菜单</button>
+                    <button class="share-btn native-share-btn" onclick="nativeShare()">📤 分享到微信/其他</button>
+                </div>
+                <p id="shareHint" class="share-hint" style="display:none;"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计横幅 -->
+    <div class="stats-banner" id="statsBanner"></div>
+
+    <!-- 分类标签导航 -->
+    <nav class="category-nav" id="categoryNav">
+        <button class="cat-tab active" data-category="all">全部</button>
+        <button class="cat-tab" data-category="seafood">🦐 海鲜</button>
+        <button class="cat-tab" data-category="stirfry">🍳 小炒</button>
+        <button class="cat-tab" data-category="chopped">🍗 斩料</button>
+        <button class="cat-tab" data-category="veggie">🥬 素菜</button>
+        <button class="cat-tab" data-category="soup">🍲 营养汤</button>
+        <button class="cat-tab" data-category="staple">🍚 主食</button>
+        <button class="cat-tab" data-category="combo">🍱 套餐</button>
+    </nav>
+
+    <!-- 菜品卡片网格 -->
+    <main class="menu-container" id="menuContainer"></main>
+
+    <!-- 无搜索结果提示 -->
+    <div id="noResult" class="no-result" style="display:none;">
+        <span class="no-result-emoji">🤷</span>
+        <p>没有找到相关菜品</p>
+    </div>
+
+    <!-- 返回顶部按钮 -->
+    <button id="backToTop" class="back-to-top" style="display:none;" onclick="window.scrollTo({top:0,behavior:'smooth'})">⬆</button>
+
+    <!-- 手动选菜底部确认栏 -->
+    <div id="selectionBar" class="selection-bar" style="display:none;">
+        <div class="selection-bar-inner">
+            <div class="selection-info">
+                <span class="selection-count" id="selectionCount">0</span>
+                <span class="selection-label">道菜已选</span>
+                <span class="selection-kcal" id="selectionKcal">0 kcal</span>
+            </div>
+            <div class="selection-actions">
+                <button class="selection-clear" onclick="clearSelection()">清空</button>
+                <button class="selection-confirm" onclick="confirmSelection()">📋 生成菜单</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>🍽️ 今天吃什么 · 家庭点餐助手</p>
+    </footer>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

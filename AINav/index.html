@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 导航站 - 发现最好用的 AI 工具</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <nav class="navbar">
+        <div class="nav-inner">
+            <div class="logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">AI导航</span>
+            </div>
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="搜索 AI 工具..." autocomplete="off">
+                <kbd class="search-kbd">/</kbd>
+            </div>
+            <div class="nav-actions">
+                <button class="btn-submit" id="submitBtn">🚀 提交工具</button>
+                <button class="btn-theme" id="themeBtn" title="切换主题">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 英雄区 -->
+    <header class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-content">
+            <h1 class="hero-title">发现最好用的 <span class="gradient-text">AI 工具</span></h1>
+            <p class="hero-desc">精选 100+ 优质 AI 工具，按场景分类，帮你快速找到最适合的那一个</p>
+            <div class="hero-stats">
+                <div class="stat"><span class="stat-num" id="totalTools">0</span><span class="stat-label">收录工具</span></div>
+                <div class="stat-divider"></div>
+                <div class="stat"><span class="stat-num" id="totalCategories">0</span><span class="stat-label">分类</span></div>
+                <div class="stat-divider"></div>
+                <div class="stat"><span class="stat-num" id="freeCount">0</span><span class="stat-label">免费可用</span></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 今日推荐 -->
+    <section class="section featured-section">
+        <div class="section-header">
+            <h2>🔥 今日推荐</h2>
+            <button class="btn-refresh" id="refreshFeatured" title="换一批">🔄 换一批</button>
+        </div>
+        <div class="featured-grid" id="featuredGrid"></div>
+    </section>
+
+    <!-- 分类标签 -->
+    <section class="section">
+        <div class="section-header">
+            <h2>📂 全部工具</h2>
+            <div class="filter-group">
+                <select id="priceFilter" class="filter-select">
+                    <option value="all">全部价格</option>
+                    <option value="free">免费</option>
+                    <option value="freemium">免费增值</option>
+                    <option value="paid">付费</option>
+                </select>
+                <select id="sortFilter" class="filter-select">
+                    <option value="rating">按评分</option>
+                    <option value="name">按名称</option>
+                    <option value="new">最新上线</option>
+                </select>
+            </div>
+        </div>
+        <div class="category-tabs" id="categoryTabs"></div>
+        <div class="tools-grid" id="toolsGrid"></div>
+        <div class="empty-state" id="emptyState" style="display:none">
+            <span class="empty-icon">🔍</span>
+            <p>没有找到匹配的工具</p>
+            <button class="btn-reset" id="resetBtn">清除筛选</button>
+        </div>
+    </section>
+
+    <!-- 提交工具弹窗 -->
+    <div class="modal-overlay" id="submitModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🚀 提交新工具</h3>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <form id="submitForm" class="modal-body">
+                <div class="form-group">
+                    <label>工具名称 *</label>
+                    <input type="text" id="toolName" required placeholder="例如：ChatGPT">
+                </div>
+                <div class="form-group">
+                    <label>工具链接 *</label>
+                    <input type="url" id="toolUrl" required placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>简介 *</label>
+                    <textarea id="toolDesc" required placeholder="一句话描述这个工具的用途" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>分类</label>
+                        <select id="toolCategory"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>价格</label>
+                        <select id="toolPrice">
+                            <option value="free">免费</option>
+                            <option value="freemium">免费增值</option>
+                            <option value="paid">付费</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit-form">提交</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 工具详情弹窗 -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal modal-detail">
+            <button class="modal-close" id="closeDetail">&times;</button>
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <!-- 回到顶部 -->
+    <button class="back-to-top" id="backToTop" title="回到顶部">↑</button>
+
+    <footer class="footer">
+        <p>⚡ AI导航 — 精选优质 AI 工具，助你提升效率</p>
+        <p class="footer-sub">数据仅供参考 · 持续更新中</p>
+    </footer>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

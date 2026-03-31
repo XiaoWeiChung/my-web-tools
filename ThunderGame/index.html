@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>⚡ 雷电战机</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: #050510;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #e0e0f0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background: radial-gradient(ellipse at 50% 0%, rgba(56,189,248,0.04) 0%, transparent 60%),
+                        radial-gradient(ellipse at 50% 100%, rgba(139,92,246,0.04) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .game-wrap {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .hud {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 400px;
+            padding: 0 4px;
+        }
+        .hud-left, .hud-right { display: flex; align-items: center; gap: 16px; }
+        .hud-item { text-align: center; }
+        .hud-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: #5a5a7a; }
+        .hud-val {
+            font-size: 22px; font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .hud-val.gold { background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text; background-clip: text; }
+        .hud-lives { display: flex; gap: 3px; font-size: 14px; }
+        .hud-wave {
+            padding: 4px 12px; border-radius: 16px; font-size: 11px; font-weight: 700;
+            border: 1.5px solid rgba(56,189,248,0.3); background: rgba(56,189,248,0.08); color: #7dd3fc;
+        }
+        .canvas-wrap {
+            position: relative; border-radius: 12px; overflow: hidden;
+            box-shadow: 0 0 0 2px rgba(56,189,248,0.12), 0 0 40px rgba(56,189,248,0.06), 0 8px 32px rgba(0,0,0,0.5);
+        }
+        canvas { display: block; background: #080818; }
+        .overlay {
+            position: absolute; inset: 0;
+            background: rgba(5,5,16,0.88); backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+            z-index: 10; transition: opacity 0.3s;
+        }
+        .overlay.hidden { opacity: 0; pointer-events: none; }
+        .ov-title { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
+        .ov-title.go { background: linear-gradient(135deg,#ef4444,#f59e0b); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        .ov-sub { font-size: 13px; color: #7a7a9a; text-align: center; line-height: 1.7; }
+        .ov-score { font-size: 44px; font-weight: 800; background: linear-gradient(135deg,#38bdf8,#818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        .btn-play {
+            padding: 12px 36px; border: none; border-radius: 12px;
+            background: linear-gradient(135deg, #38bdf8, #6366f1); color: white;
+            font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+            box-shadow: 0 4px 20px rgba(56,189,248,0.3); transition: 0.3s;
+        }
+        .btn-play:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(56,189,248,0.4); }
+        .ov-legend {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px;
+            font-size: 11px; color: #6a6a8a; margin-top: 4px;
+        }
+        .ov-legend span { color: #9a9ab0; }
+        .controls-info { font-size: 11px; color: #3a3a5a; text-align: center; line-height: 1.6; }
+        .controls-info kbd {
+            padding: 1px 6px; border-radius: 4px;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+            font-size: 10px; color: #5a5a7a; font-family: inherit;
+        }
+        @media (max-width: 420px) {
+            canvas { width: 340px !important; height: 540px !important; }
+            .hud-val { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-wrap">
+        <div class="hud">
+            <div class="hud-left">
+                <div class="hud-item"><div class="hud-label">分数</div><div class="hud-val" id="score">0</div></div>
+                <div class="hud-item"><div class="hud-label">最高</div><div class="hud-val gold" id="best">0</div></div>
+            </div>
+            <div class="hud-right">
+                <div class="hud-lives" id="lives"></div>
+                <div class="hud-wave" id="wave">第 1 波</div>
+            </div>
+        </div>
+        <div class="canvas-wrap">
+            <canvas id="canvas" width="400" height="640"></canvas>
+            <div class="overlay" id="startOv">
+                <div class="ov-title">⚡ 雷电战机</div>
+                <div class="ov-sub">消灭敌机，收集道具，挑战 Boss</div>
+                <button class="btn-play" id="btnStart">开始游戏</button>
+                <div class="ov-legend">
+                    <div>🟢 <span>普通敌机</span></div>
+                    <div>🔴 <span>精英敌机</span></div>
+                    <div>🟣 <span>每5波Boss</span></div>
+                    <div>⚡ <span>武器升级</span></div>
+                    <div>🛡️ <span>护盾</span></div>
+                    <div>💣 <span>全屏炸弹</span></div>
+                    <div>❤️ <span>回血</span></div>
+                    <div>🧲 <span>磁铁吸金</span></div>
+                    <div>🚀 <span>弹道+1</span></div>
+                    <div>🎯 <span>追踪导弹</span></div>
+                    <div>🔥 <span>激光炮</span></div>
+                    <div>✈️ <span>僚机</span></div>
+                    <div>❄️ <span>冰冻弹</span></div>
+                    <div>🏆 <span>编队来袭</span></div>
+                </div>
+                <div class="ov-sub" style="font-size:11px;margin-top:4px">鼠标/触屏拖动 · <kbd>空格</kbd> 炸弹 · <kbd>Q</kbd> 切换炸弹 · <kbd>P</kbd> 暂停</div>
+            </div>
+            <div class="overlay hidden" id="pauseOv">
+                <div class="ov-title">⏸️ 暂停</div>
+                <div class="ov-sub">按 P 或点击继续</div>
+                <button class="btn-play" id="btnResume">继续</button>
+            </div>
+            <div class="overlay hidden" id="gameoverOv">
+                <div class="ov-title go">游戏结束</div>
+                <div class="ov-score" id="finalScore">0</div>
+                <div class="ov-sub" id="finalMsg"></div>
+                <button class="btn-play" id="btnRestart">再来一局</button>
+            </div>
+        </div>
+        <div class="controls-info">
+            鼠标/触屏拖动移动 · <kbd>空格</kbd> 使用炸弹 · <kbd>Q</kbd> 切换炸弹 · <kbd>P</kbd> 暂停
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

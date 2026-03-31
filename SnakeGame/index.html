@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🐍 贪吃蛇</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a1a;
+            color: #e0e0f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 背景粒子 */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(99,102,241,0.06) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(16,185,129,0.06) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .game-wrapper {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* 顶部信息栏 */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 480px;
+            padding: 0 4px;
+        }
+
+        .score-panel {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .score-item {
+            text-align: center;
+        }
+
+        .score-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #6a6a8a;
+            margin-bottom: 2px;
+        }
+
+        .score-value {
+            font-size: 28px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            background: linear-gradient(135deg, #6366f1, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .score-value.best {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+
+        .level-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            border: 1.5px solid rgba(99,102,241,0.3);
+            background: rgba(99,102,241,0.1);
+            color: #818cf8;
+            letter-spacing: 0.5px;
+        }
+
+        /* 游戏画布 */
+        .canvas-wrap {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow:
+                0 0 0 2px rgba(99,102,241,0.15),
+                0 0 40px rgba(99,102,241,0.08),
+                0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        canvas {
+            display: block;
+            background: #0f0f24;
+        }
+
+        /* 遮罩层 */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(10,10,26,0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            z-index: 10;
+            transition: opacity 0.3s;
+        }
+
+        .overlay.hidden { opacity: 0; pointer-events: none; }
+
+        .overlay-title {
+            font-size: 36px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .overlay-title.gameover {
+            background: linear-gradient(135deg, #ef4444, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .overlay-sub {
+            font-size: 14px;
+            color: #8a8aa0;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .overlay-score {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #6366f1, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn-play {
+            padding: 14px 40px;
+            border: none;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            font-family: inherit;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+            margin-top: 8px;
+        }
+
+        .btn-play:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(99,102,241,0.4); }
+        .btn-play:active { transform: translateY(0); }
+
+        /* 难度选择 */
+        .difficulty {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .diff-btn {
+            padding: 8px 18px;
+            border: 1.5px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.04);
+            color: #8a8aa0;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            font-family: inherit;
+        }
+
+        .diff-btn:hover { border-color: rgba(99,102,241,0.4); color: #b0b0d0; }
+        .diff-btn.active { border-color: #6366f1; background: rgba(99,102,241,0.15); color: #818cf8; }
+
+        /* 底部控制 */
+        .controls-info {
+            font-size: 12px;
+            color: #4a4a6a;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .controls-info kbd {
+            padding: 2px 8px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            font-family: inherit;
+            font-size: 11px;
+            color: #7a7a9a;
+        }
+
+        /* 移动端方向键 */
+        .touch-controls {
+            display: none;
+            grid-template-areas:
+                ". up ."
+                "left down right";
+            grid-template-columns: repeat(3, 64px);
+            grid-template-rows: repeat(2, 64px);
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .touch-btn {
+            width: 64px;
+            height: 64px;
+            border: 1.5px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.04);
+            color: #8a8aa0;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.15s;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .touch-btn:active { background: rgba(99,102,241,0.2); border-color: #6366f1; transform: scale(0.92); }
+
+        .touch-btn[data-dir="up"] { grid-area: up; }
+        .touch-btn[data-dir="down"] { grid-area: down; }
+        .touch-btn[data-dir="left"] { grid-area: left; }
+        .touch-btn[data-dir="right"] { grid-area: right; }
+
+        /* 粒子效果容器 */
+        .particles {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        @media (max-width: 520px) {
+            .touch-controls { display: grid; }
+            .controls-info { display: none; }
+            .score-value { font-size: 22px; }
+        }
+
+        @media (max-width: 400px) {
+            canvas { width: 320px !important; height: 320px !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-wrapper">
+        <div class="top-bar">
+            <div class="score-panel">
+                <div class="score-item">
+                    <div class="score-label">分数</div>
+                    <div class="score-value" id="score">0</div>
+                </div>
+                <div class="score-item">
+                    <div class="score-label">最高</div>
+                    <div class="score-value best" id="best">0</div>
+                </div>
+            </div>
+            <div class="level-badge" id="levelBadge">🟢 简单</div>
+        </div>
+
+        <div class="canvas-wrap">
+            <canvas id="canvas" width="480" height="480"></canvas>
+            <div class="particles" id="particles"></div>
+
+            <!-- 开始界面 -->
+            <div class="overlay" id="startOverlay">
+                <div class="overlay-title">🐍 贪吃蛇</div>
+                <div class="overlay-sub">选择难度开始游戏</div>
+                <div class="difficulty" id="difficulty">
+                    <button class="diff-btn active" data-speed="120" data-name="🟢 简单">简单</button>
+                    <button class="diff-btn" data-speed="85" data-name="🟡 中等">中等</button>
+                    <button class="diff-btn" data-speed="55" data-name="🔴 困难">困难</button>
+                </div>
+                <button class="btn-play" id="btnStart">开始游戏</button>
+                <div class="overlay-sub">方向键 / WASD 控制方向<br>空格键暂停</div>
+                <div class="overlay-sub" style="margin-top:8px;font-size:12px;line-height:2;color:#6a6a8a">
+                    🟢 食物 +10分 · ⭐ 特殊 +30分 · 💀 毒物 -15分<br>
+                    ⚡ 加速4秒得分翻倍 · 🛡️ 护盾6秒免死一次<br>
+                    🧱 障碍物随分数增加
+                </div>
+            </div>
+
+            <!-- 暂停界面 -->
+            <div class="overlay hidden" id="pauseOverlay">
+                <div class="overlay-title">⏸️ 暂停</div>
+                <div class="overlay-sub">按空格键继续</div>
+            </div>
+
+            <!-- 结束界面 -->
+            <div class="overlay hidden" id="gameoverOverlay">
+                <div class="overlay-title gameover">游戏结束</div>
+                <div class="overlay-score" id="finalScore">0</div>
+                <div class="overlay-sub" id="finalMsg">再来一次？</div>
+                <button class="btn-play" id="btnRestart">再来一局</button>
+            </div>
+        </div>
+
+        <div class="touch-controls" id="touchControls">
+            <button class="touch-btn" data-dir="up">↑</button>
+            <button class="touch-btn" data-dir="left">←</button>
+            <button class="touch-btn" data-dir="down">↓</button>
+            <button class="touch-btn" data-dir="right">→</button>
+        </div>
+
+        <div class="controls-info">
+            <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> 或 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动 · <kbd>空格</kbd> 暂停
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
