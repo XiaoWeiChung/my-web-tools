@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🏎️ 极速狂飙</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#eee;overflow:hidden;user-select:none;-webkit-user-select:none}
+        .wrap{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:10px}
+        .hud{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:400px;padding:0 4px}
+        .hud-left,.hud-right{display:flex;align-items:center;gap:14px}
+        .hud-item{text-align:center}
+        .hud-label{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:#666}
+        .hud-val{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .hud-val.blue{background:linear-gradient(135deg,#38bdf8,#6366f1);-webkit-background-clip:text;background-clip:text}
+        .hud-lives{display:flex;gap:2px;font-size:13px}
+        .hud-speed{padding:4px 12px;border-radius:16px;font-size:11px;font-weight:700;border:1.5px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#fca5a5}
+        .canvas-wrap{position:relative;border-radius:10px;overflow:hidden;box-shadow:0 0 0 2px rgba(239,68,68,0.1),0 0 30px rgba(239,68,68,0.05),0 8px 32px rgba(0,0,0,0.5)}
+        canvas{display:block;background:#2d5a27}
+        .ov{position:absolute;inset:0;background:rgba(10,10,10,0.9);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:10;transition:opacity .3s}
+        .ov.hidden{opacity:0;pointer-events:none}
+        .ov-title{font-size:30px;font-weight:800}
+        .ov-title.go{background:linear-gradient(135deg,#ef4444,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .ov-sub{font-size:13px;color:#888;text-align:center;line-height:1.7}
+        .ov-score{font-size:40px;font-weight:800;background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .btn{padding:12px 36px;border:none;border-radius:12px;background:linear-gradient(135deg,#ef4444,#f59e0b);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 20px rgba(239,68,68,0.3);transition:.3s}
+        .btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(239,68,68,0.4)}
+        .cars-select{display:flex;gap:10px;margin:8px 0}
+        .car-opt{width:56px;height:56px;border-radius:12px;border:2px solid #333;background:#1a1a1a;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s;flex-direction:column;gap:2px}
+        .car-opt.active{border-color:#f59e0b;background:#2a2000}
+        .car-opt canvas{border-radius:6px}
+        .car-opt-name{font-size:8px;color:#888}
+        .legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;font-size:11px;color:#666;margin-top:4px}
+        .legend span{color:#999}
+        .ctrl{font-size:11px;color:#444;text-align:center;line-height:1.6}
+        .ctrl kbd{padding:1px 6px;border-radius:4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);font-size:10px;color:#666;font-family:inherit}
+        @media(max-width:420px){canvas{width:340px!important;height:560px!important}.hud-val{font-size:17px}}
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="hud">
+        <div class="hud-left">
+            <div class="hud-item"><div class="hud-label">分数</div><div class="hud-val" id="score">0</div></div>
+            <div class="hud-item"><div class="hud-label">最高</div><div class="hud-val blue" id="best">0</div></div>
+        </div>
+        <div class="hud-right">
+            <div class="hud-lives" id="lives"></div>
+            <div class="hud-speed" id="speedHud">0 km/h</div>
+        </div>
+    </div>
+    <div class="canvas-wrap">
+        <canvas id="c" width="400" height="640"></canvas>
+        <div class="ov" id="startOv">
+            <div class="ov-title">🏎️ 极速狂飙</div>
+            <div class="ov-sub">躲避车辆，收集道具，挑战极限速度</div>
+            <div class="ov-sub" style="font-size:11px">选择座驾</div>
+            <div class="cars-select" id="carSelect"></div>
+            <button class="btn" id="btnStart">开始狂飙</button>
+            <div class="legend">
+                <div>🟡 <span>金币</span></div><div>⚡ <span>氮气加速</span></div>
+                <div>🛡️ <span>护盾</span></div><div>🧲 <span>磁铁</span></div>
+                <div>⏱️ <span>时间减速</span></div><div>🔧 <span>修复</span></div>
+            </div>
+            <div class="ctrl"><kbd>←</kbd> <kbd>→</kbd> 或 <kbd>A</kbd> <kbd>D</kbd> 变道 · 触屏左右滑动</div>
+        </div>
+        <div class="ov hidden" id="goOv">
+            <div class="ov-title go">游戏结束</div>
+            <div class="ov-score" id="finalScore">0</div>
+            <div class="ov-sub" id="finalMsg"></div>
+            <button class="btn" id="btnRestart">再来一局</button>
+        </div>
+    </div>
+    <div class="ctrl" style="margin-top:6px"><kbd>←</kbd> <kbd>→</kbd> 变道 · <kbd>空格</kbd> 氮气 · 触屏滑动</div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
