@@ -11,10 +11,18 @@ const ALL_CATEGORIES = ["seafood","stirfry","chopped","veggie","soup","staple","
 
 // ===== 初始化 =====
 document.addEventListener("DOMContentLoaded", () => {
+    updateHeaderHeight();
     renderStats();
     renderMenu();
     bindEvents();
 });
+
+// ===== 动态计算 header 高度，供分类导航吸顶使用 =====
+function updateHeaderHeight() {
+    const header = document.querySelector(".header");
+    const h = header.offsetHeight;
+    document.documentElement.style.setProperty("--header-height", h + "px");
+}
 
 // ===== 渲染统计横幅 =====
 function renderStats() {
@@ -170,6 +178,8 @@ function bindEvents() {
     window.addEventListener("scroll", () => {
         document.getElementById("backToTop").style.display = window.scrollY > 400 ? "block" : "none";
     });
+
+    window.addEventListener("resize", updateHeaderHeight);
 
     ["randomModal", "detailModal", "shareModal"].forEach(id => {
         document.getElementById(id).addEventListener("click", e => {
