@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+    />
+    <title>椰子跑酷</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="game-shell">
+      <header class="top-bar">
+        <h1>椰子跑酷</h1>
+        <div class="hint">电脑：←/→ 或 A/D；手机：直接左右滑动换道；↑/W/J 跳跃，空格暂停</div>
+      </header>
+
+      <section class="hud">
+        <div class="chip">生命：<span id="lives">5</span></div>
+        <div class="chip">金币：<span id="coins">0</span></div>
+        <div class="chip">分数：<span id="score">0</span></div>
+        <div class="chip">速度：<span id="speed">1.0</span>x</div>
+      </section>
+
+      <section class="arena-wrap">
+        <canvas id="game-canvas" aria-label="椰子跑酷画面"></canvas>
+        <button id="mobile-pause-btn" class="mobile-pause-btn" type="button">暂停</button>
+        <div id="toast" class="toast"></div>
+
+        <div id="overlay" class="overlay show">
+          <div class="panel">
+            <h2>椰子跑酷</h2>
+            <p id="status">正在准备头像与赛道...</p>
+            <button id="start-btn" disabled>开始游戏</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="mobile-controls" aria-label="移动端控制按钮">
+        <button id="left-btn" type="button">← 左</button>
+        <button id="jump-btn" type="button">↑ 跳</button>
+        <button id="right-btn" type="button">右 →</button>
+      </section>
+    </div>
+
+    <script src="./game.js"></script>
+  </body>
+</html>
