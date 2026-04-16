@@ -22,6 +22,9 @@ const AVATAR_PATHS = {
   mango: "./assets/mango_source.png",
 };
 
+let idleSceneMessage = "按“开始游戏”启动";
+let reduceMotionMq = null;
+
 const state = {
   running: false,
   paused: false,
@@ -54,6 +57,7 @@ const state = {
     obstacleAt: 0,
     coinAt: 0,
     powerAt: 0,
+    lastObstacleLane: null,
   },
   mango: {
     active: false,
@@ -77,9 +81,9 @@ let touchStartY = null;
 init();
 
 async function init() {
+  idleSceneMessage = "正在加载头像素材...";
   resizeCanvas();
   bindEvents();
-  drawIdleScene("正在加载头像素材...");
   setStatus("正在准备头像与赛道...");
 
   try {
@@ -96,8 +100,11 @@ async function init() {
 
     setStatus("头像已就位，准备开跑！");
     startBtn.disabled = false;
-    drawIdleScene("按“开始游戏”启动");
+    idleSceneMessage = "按“开始游戏”启动";
+    drawIdleScene(idleSceneMessage);
   } catch (error) {
+    idleSceneMessage = "素材加载失败，请检查图片路径。";
+    drawIdleScene(idleSceneMessage);
     setStatus("素材加载失败，请检查图片路径。");
     console.error(error);
   }
@@ -111,12 +118,26 @@ function bindEvents() {
 
   window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
+    if (event.key === "Escape") {
+      event.preventDefault();
+      togglePause();
+      return;
+    }
+    if (key === "r") {
+      if (!startBtn.disabled) {
+        event.preventDefault();
+        startGame();
+      }
+      return;
+    }
     if (key === "arrowleft" || key === "a") {
       moveLane(-1);
     } else if (key === "arrowright" || key === "d") {
       moveLane(1);
     } else if (key === "arrowup" || key === "w" || key === "j") {
       jump();
+    } else if (key === "arrowdown" || key === "s") {
+      if (!event.repeat) fastFall();
     } else if (key === " ") {
       event.preventDefault();
       togglePause();
@@ -149,13 +170,20 @@ function bindEvents() {
     const endY = event.changedTouches[0].clientY;
     const delta = endX - touchStartX;
     const deltaY = endY - touchStartY;
-    if (Math.abs(delta) > 26 && Math.abs(delta) > Math.abs(deltaY)) {
+    const absX = Math.abs(delta);
+    const absY = Math.abs(deltaY);
+    const swipePx = 26;
+
+    if (state.jumpHeight > 12 && deltaY > swipePx && absY > absX) {
+      fastFall();
+    } else if (absX > swipePx && absX > absY) {
       moveLane(delta > 0 ? 1 : -1);
-    } else if (deltaY < -20) {
+    } else if (deltaY < -swipePx && absY >= absX) {
       jump();
-    } else {
+    } else if (absX <= 18 && absY <= 18) {
       jump();
     }
+
     touchStartX = null;
     touchStartY = null;
   });
@@ -211,6 +239,7 @@ function startGame() {
   state.spawns.obstacleAt = now + 500;
   state.spawns.coinAt = now + 250;
   state.spawns.powerAt = now + 6200;
+  state.spawns.lastObstacleLane = null;
   state.mango.nextAt = now + randomBetween(9000, 17000);
   state.mango.active = false;
 
@@ -304,22 +333,61 @@ function maybeSpawn(now) {
 
 function spawnObstacle() {
   const nearHorizonY = canvas.height * 0.18;
+  const y = nearHorizonY + randomBetween(-6, 12);
   state.entities.obstacles.push({
-    lane: randomLane(),
-    y: nearHorizonY + randomBetween(-6, 12),
+    lane: pickObstacleLane(y),
+    y,
     speedMul: randomBetween(0.88, 1.12),
     type: Math.random() < 0.5 ? "cone" : "box",
   });
 }
 
+function pickObstacleLane(newY) {
+  const minDy = 46 + state.speedFactor * 10;
+  const blocked = new Set();
+  for (const o of state.entities.obstacles) {
+    if (Math.abs(o.y - newY) < minDy) {
+      blocked.add(o.lane);
+    }
+  }
+  let candidates = [0, 1, 2].filter((l) => !blocked.has(l));
+  if (candidates.length === 0) {
+    candidates = [0, 1, 2];
+  }
+  const last = state.spawns.lastObstacleLane;
+  if (last !== null && candidates.length > 1) {
+    const noRepeat = candidates.filter((l) => l !== last);
+    if (noRepeat.length) {
+      candidates = noRepeat;
+    }
+  }
+  const lane = candidates[Math.floor(Math.random() * candidates.length)];
+  state.spawns.lastObstacleLane = lane;
+  return lane;
+}
+
+function pickLaneAvoidingObstacles(y, minDy) {
+  const blocked = new Set();
+  for (const o of state.entities.obstacles) {
+    if (Math.abs(o.y - y) < minDy) {
+      blocked.add(o.lane);
+    }
+  }
+  const candidates = [0, 1, 2].filter((l) => !blocked.has(l));
+  if (candidates.length) {
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+  return randomLane();
+}
+
 function spawnCoin() {
   const nearHorizonY = canvas.height * 0.18;
-  const lane = randomLane();
   const count = Math.random() < 0.3 ? 2 : 1;
   for (let i = 0; i < count; i += 1) {
+    const y = nearHorizonY - i * 18 + randomBetween(-4, 6);
     state.entities.coins.push({
-      lane,
-      y: nearHorizonY - i * 18 + randomBetween(-4, 6),
+      lane: pickLaneAvoidingObstacles(y, 36),
+      y,
       speedMul: randomBetween(0.95, 1.18),
       magnetX: null,
     });
@@ -330,9 +398,10 @@ function spawnPower() {
   const pool = ["shield", "magnet", "double", "heal"];
   const type = pool[Math.floor(Math.random() * pool.length)];
   const nearHorizonY = canvas.height * 0.18;
+  const y = nearHorizonY + randomBetween(-4, 8);
   state.entities.powers.push({
-    lane: randomLane(),
-    y: nearHorizonY + randomBetween(-4, 8),
+    lane: pickLaneAvoidingObstacles(y, 42),
+    y,
     speedMul: 1,
     type,
   });
@@ -513,9 +582,16 @@ function jump() {
   state.jumpVelocity = 840;
 }
 
+function fastFall() {
+  if (!state.running || state.paused || state.gameOver) return;
+  if (state.jumpHeight < 14) return;
+  state.jumpVelocity = -3400;
+}
+
 function render() {
-  const shakeX = (Math.random() - 0.5) * 16 * state.shake;
-  const shakeY = (Math.random() - 0.5) * 12 * state.shake;
+  const motionScale = prefersReducedMotion() ? 0.22 : 1;
+  const shakeX = (Math.random() - 0.5) * 16 * state.shake * motionScale;
+  const shakeY = (Math.random() - 0.5) * 12 * state.shake * motionScale;
   ctx.save();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.translate(shakeX, shakeY);
@@ -735,7 +811,9 @@ function drawPlayer() {
   const y = canvas.height * 0.84 - state.jumpHeight;
   const x = laneX(state.laneVisual, y);
   const scale = 1 + state.jumpHeight / 360;
-  const bob = Math.sin(state.elapsedMs / 110) * 1.6;
+  const runCycle = (state.elapsedMs / 1000) * (Math.PI * 2) * 4.2;
+  const onGround = state.jumpHeight < 10;
+  const bob = onGround ? Math.sin(runCycle * 2) * 2.4 * scale : Math.sin(state.elapsedMs / 200) * 0.8 * scale;
   ctx.save();
   if (performance.now() < state.invincibleUntil) {
     ctx.globalAlpha = 0.68 + Math.sin(state.elapsedMs / 90) * 0.22;
@@ -748,16 +826,17 @@ function drawPlayer() {
     bodySub: "#2f7b4e",
     accent: "#ffffff",
     avatar: assets.coconutAvatar,
-    legPhase: state.elapsedMs / 90,
+    legPhase: runCycle,
     jumpHeight: state.jumpHeight,
   });
   ctx.restore();
 
   if (isEffectActive("shieldUntil")) {
+    const ringY = y + bob - 28 * scale;
     ctx.strokeStyle = "rgba(79, 195, 247, 0.85)";
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.arc(x, y - 30, 42 + Math.sin(state.elapsedMs / 90) * 3.2, 0, Math.PI * 2);
+    ctx.arc(x, ringY, 40 * scale + Math.sin(state.elapsedMs / 90) * 3.2, 0, Math.PI * 2);
     ctx.stroke();
   }
 }
@@ -765,73 +844,191 @@ function drawPlayer() {
 function drawChibiRunner({ x, y, scale, bodyMain, bodySub, accent, avatar, legPhase, jumpHeight }) {
   const headSize = 50 * scale;
   const torsoW = 40 * scale;
-  const torsoH = 48 * scale;
-  const legLen = 22 * scale;
-  const armLen = 16 * scale;
-  const runSwing = Math.sin(legPhase) * 6 * scale;
+  const torsoH = 46 * scale;
+  const torsoTop = y - 25 * scale;
+  const torsoBottom = torsoTop + torsoH;
+  const torsoCx = x;
+  const torsoCy = (torsoTop + torsoBottom) / 2;
+  const onGround = jumpHeight < 10;
+  const air = clamp(jumpHeight / 95, 0, 1);
 
-  ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+  const groundFeetY = y + 36 * scale;
+  const shadA = 0.12 + air * 0.1 + (onGround ? 0.06 : 0);
+  const shadRx = Math.max(11 * scale, (21 - jumpHeight * 0.045) * scale);
+  const shadRy = Math.max(4 * scale, (8.5 - jumpHeight * 0.018) * scale);
+  ctx.fillStyle = `rgba(0, 0, 0, ${shadA})`;
   ctx.beginPath();
-  ctx.ellipse(
-    x,
-    canvas.height * 0.86,
-    Math.max(12, 22 - jumpHeight * 0.05),
-    Math.max(4, 9 - jumpHeight * 0.02),
-    0,
-    0,
-    Math.PI * 2
-  );
+  ctx.ellipse(x, groundFeetY + 2 * scale, shadRx, shadRy, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const torsoTop = y - 26 * scale;
-  const torsoBottom = torsoTop + torsoH;
+  const lean = onGround ? 0.11 * Math.sin(legPhase * 2) : -0.07 - air * 0.05;
 
-  ctx.strokeStyle = bodySub;
-  ctx.lineWidth = 5 * scale;
+  const s = Math.sin(legPhase);
+  const c = Math.cos(legPhase);
+  const hipSpread = 8.2 * scale;
+  const shin = 15 * scale;
+
+  ctx.save();
+  ctx.translate(torsoCx, torsoCy);
+  ctx.rotate(lean);
+  ctx.translate(-torsoCx, -torsoCy);
+
   ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(x - 8 * scale, torsoBottom);
-  ctx.lineTo(x - 12 * scale + runSwing, torsoBottom + legLen);
-  ctx.moveTo(x + 8 * scale, torsoBottom);
-  ctx.lineTo(x + 12 * scale - runSwing, torsoBottom + legLen);
-  ctx.stroke();
+  ctx.lineJoin = "round";
 
-  ctx.beginPath();
-  ctx.moveTo(x - torsoW * 0.45, torsoTop + 16 * scale);
-  ctx.lineTo(x - torsoW * 0.55 - runSwing * 0.5, torsoTop + 16 * scale + armLen);
-  ctx.moveTo(x + torsoW * 0.45, torsoTop + 16 * scale);
-  ctx.lineTo(x + torsoW * 0.55 + runSwing * 0.5, torsoTop + 16 * scale + armLen);
-  ctx.stroke();
+  if (onGround) {
+    drawRunnerLegSegments(x - hipSpread, torsoBottom, -s, c, shin, groundFeetY, scale, bodySub);
+    drawRunnerLegSegments(x + hipSpread, torsoBottom, s, c, shin, groundFeetY, scale, bodySub);
+  } else {
+    drawJumpLegs(x, torsoBottom, scale, bodySub, air, groundFeetY, s);
+  }
 
-  roundRect(ctx, x - torsoW / 2, torsoTop, torsoW, torsoH, 10 * scale);
+  roundRect(ctx, x - torsoW / 2, torsoTop, torsoW, torsoH, 11 * scale);
   const shirtGrad = ctx.createLinearGradient(x - torsoW / 2, torsoTop, x + torsoW / 2, torsoBottom);
   shirtGrad.addColorStop(0, bodyMain);
+  shirtGrad.addColorStop(0.55, bodyMain);
   shirtGrad.addColorStop(1, bodySub);
   ctx.fillStyle = shirtGrad;
   ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.08)";
+  ctx.lineWidth = 1.2 * scale;
+  ctx.stroke();
+
   ctx.fillStyle = accent;
-  ctx.fillRect(x - torsoW / 2, torsoTop + torsoH * 0.55, torsoW, 4 * scale);
+  ctx.fillRect(x - torsoW / 2, torsoTop + torsoH * 0.52, torsoW, 4.5 * scale);
+
+  const shoulderY = torsoTop + 15 * scale;
+  const shoulderLX = x - torsoW * 0.38;
+  const shoulderRX = x + torsoW * 0.38;
+  const armThick = 4.8 * scale;
+  const upperArm = 13 * scale;
+  const foreArm = 12 * scale;
+
+  if (onGround) {
+    const opp = -s;
+    drawRunnerArm(shoulderLX, shoulderY, opp, scale, bodySub, armThick, upperArm, foreArm, -1);
+    drawRunnerArm(shoulderRX, shoulderY, -opp, scale, bodySub, armThick, upperArm, foreArm, 1);
+  } else {
+    drawJumpArms(shoulderLX, shoulderRX, shoulderY, scale, bodySub, armThick, upperArm, foreArm, air);
+  }
+
+  ctx.restore();
+
+  const neckX = x;
+  const neckY = torsoTop + headSize * 0.08;
+  ctx.save();
+  ctx.translate(neckX, neckY);
+  ctx.rotate(-lean * 0.62);
+  ctx.translate(-neckX, -neckY);
+  ctx.fillStyle = "rgba(47, 123, 78, 0.35)";
+  roundRect(ctx, x - 7 * scale, torsoTop - 4 * scale, 14 * scale, 8 * scale, 4 * scale);
+  ctx.fill();
+
+  const faceCx = x;
+  const faceCy = torsoTop - headSize * 0.28;
 
   if (avatar) {
     ctx.save();
     ctx.beginPath();
-    ctx.arc(x, torsoTop - headSize * 0.3, headSize / 2, 0, Math.PI * 2);
+    ctx.arc(faceCx, faceCy, headSize / 2, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(
-      avatar,
-      x - headSize / 2,
-      torsoTop - headSize * 0.3 - headSize / 2,
-      headSize,
-      headSize
-    );
+    ctx.drawImage(avatar, faceCx - headSize / 2, faceCy - headSize / 2, headSize, headSize);
     ctx.restore();
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(255,255,255,0.95)";
+    ctx.lineWidth = 3 * scale;
     ctx.beginPath();
-    ctx.arc(x, torsoTop - headSize * 0.3, headSize / 2, 0, Math.PI * 2);
+    ctx.arc(faceCx, faceCy, headSize / 2, 0, Math.PI * 2);
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawRunnerLegSegments(hipX, hipY, stride, phaseCos, shinLen, footY, scale, color) {
+  const kneeX = hipX + stride * 13.5 * scale;
+  const kneeY = hipY + 9 * scale - Math.abs(phaseCos) * 9 * scale;
+
+  const dy = footY - kneeY;
+  const dyClamped = clamp(dy, -shinLen * 0.985, shinLen * 0.985);
+  const rest = shinLen * shinLen - dyClamped * dyClamped;
+  const fxOff = rest > 0 ? Math.sqrt(rest) : 0;
+  const sign = stride >= 0 ? 1 : -1;
+  const footX = kneeX + sign * fxOff;
+  const footYUse = footY;
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 5.8 * scale;
+  ctx.beginPath();
+  ctx.moveTo(hipX, hipY);
+  ctx.lineTo(kneeX, kneeY);
+  ctx.lineTo(footX, footYUse);
+  ctx.stroke();
+
+  ctx.fillStyle = "#1a3d2e";
+  ctx.beginPath();
+  ctx.ellipse(footX, footYUse + 1.2 * scale, 5.2 * scale, 2.6 * scale, stride * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawJumpLegs(x, hipY, scale, color, air, groundY, s) {
+  const tuck = air;
+  const out = 10 * scale * (0.35 + tuck * 0.45);
+  const lift = 16 * scale * tuck;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 5.4 * scale;
+  ctx.beginPath();
+  ctx.moveTo(x - 8 * scale, hipY);
+  ctx.quadraticCurveTo(x - out, hipY + lift * 0.6, x - 12 * scale - out * 0.2, hipY + lift);
+  ctx.moveTo(x + 8 * scale, hipY);
+  ctx.quadraticCurveTo(x + out, hipY + lift * 0.6, x + 12 * scale + out * 0.2, hipY + lift);
+  ctx.stroke();
+
+  if (tuck < 0.55) {
+    ctx.fillStyle = "#1a3d2e";
+    const fx = x + s * 3 * scale;
+    ctx.beginPath();
+    ctx.ellipse(fx, groundY - (1 - tuck) * 10 * scale, 5 * scale, 2.4 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawRunnerArm(sx, sy, swing, scale, color, thick, upper, fore, side) {
+  const swingRad = swing * 0.62;
+  const elbowX = sx + Math.sin(swingRad) * upper * side;
+  const elbowY = sy + Math.cos(swingRad) * upper * 0.85;
+  const handX = elbowX + Math.sin(swingRad + 0.35 * side) * fore;
+  const handY = elbowY + Math.cos(swingRad * 0.6) * fore * 0.92;
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = thick;
+  ctx.beginPath();
+  ctx.moveTo(sx, sy);
+  ctx.lineTo(elbowX, elbowY);
+  ctx.lineTo(handX, handY);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(247, 215, 61, 0.85)";
+  ctx.beginPath();
+  ctx.arc(handX, handY, 3.2 * scale, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawJumpArms(slX, srX, sy, scale, color, thick, upper, fore, air) {
+  const reach = (0.55 + air * 0.4) * upper;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = thick;
+  ctx.beginPath();
+  ctx.moveTo(slX, sy);
+  ctx.lineTo(slX - reach * 0.75, sy - reach * 0.55 - air * 6 * scale);
+  ctx.moveTo(srX, sy);
+  ctx.lineTo(srX + reach * 0.75, sy - reach * 0.55 - air * 6 * scale);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(247, 215, 61, 0.85)";
+  ctx.beginPath();
+  ctx.arc(slX - reach * 0.75, sy - reach * 0.55 - air * 6 * scale, 3 * scale, 0, Math.PI * 2);
+  ctx.arc(srX + reach * 0.75, sy - reach * 0.55 - air * 6 * scale, 3 * scale, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawMango() {
@@ -847,7 +1044,7 @@ function drawMango() {
     bodySub: "#2f63c2",
     accent: "#ffffff",
     avatar: assets.mangoAvatar,
-    legPhase: state.elapsedMs / 120 + 1.2,
+    legPhase: (state.elapsedMs / 1000) * (Math.PI * 2) * 3.6 + 1.2,
     jumpHeight: 0,
   });
 
@@ -869,30 +1066,57 @@ function drawMango() {
 function drawEffectsBadges() {
   const now = performance.now();
   const effects = [];
-  if (isEffectActive("shieldUntil", now)) effects.push("护盾");
-  if (isEffectActive("magnetUntil", now)) effects.push("吸金");
-  if (isEffectActive("doubleUntil", now)) effects.push("双倍");
-  if (isEffectActive("slowUntil", now)) effects.push("慢速");
+  if (isEffectActive("shieldUntil", now)) {
+    effects.push(`护盾 ${effectSecondsLeft("shieldUntil", now)}s`);
+  }
+  if (isEffectActive("magnetUntil", now)) {
+    effects.push(`吸金 ${effectSecondsLeft("magnetUntil", now)}s`);
+  }
+  if (isEffectActive("doubleUntil", now)) {
+    effects.push(`双倍 ${effectSecondsLeft("doubleUntil", now)}s`);
+  }
+  if (isEffectActive("slowUntil", now)) {
+    effects.push(`慢速 ${effectSecondsLeft("slowUntil", now)}s`);
+  }
   if (effects.length === 0) return;
 
   const text = `Buff：${effects.join(" / ")}`;
-  ctx.font = "700 14px sans-serif";
-  const width = ctx.measureText(text).width + 22;
-  roundRect(ctx, 16, canvas.height - 44, width, 28, 12);
-  ctx.fillStyle = "rgba(255,255,255,0.84)";
+  ctx.font = "700 13px sans-serif";
+  const width = ctx.measureText(text).width + 26;
+  const bx = 14;
+  const by = canvas.height - 46;
+  roundRect(ctx, bx, by, width, 30, 14);
+  const bg = ctx.createLinearGradient(bx, by, bx + width, by + 30);
+  bg.addColorStop(0, "rgba(255,255,255,0.94)");
+  bg.addColorStop(1, "rgba(245, 252, 255, 0.9)");
+  ctx.fillStyle = bg;
   ctx.fill();
-  ctx.fillStyle = "#3c5e65";
+  ctx.strokeStyle = "rgba(124, 200, 255, 0.45)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = "#2f4f5c";
   ctx.textAlign = "left";
-  ctx.fillText(text, 27, canvas.height - 24);
+  ctx.fillText(text, bx + 13, canvas.height - 24);
 }
 
 function drawPauseLayer() {
-  ctx.fillStyle = "rgba(38, 20, 50, 0.36)";
+  const g = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  g.addColorStop(0, "rgba(32, 18, 48, 0.42)");
+  g.addColorStop(1, "rgba(18, 40, 58, 0.38)");
+  ctx.fillStyle = g;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#fff";
-  ctx.font = `700 ${Math.floor(canvas.height * 0.06)}px sans-serif`;
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.14)";
+  roundRect(ctx, canvas.width * 0.18, canvas.height * 0.4, canvas.width * 0.64, 88, 20);
+  ctx.fill();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `800 ${Math.floor(canvas.height * 0.055)}px sans-serif`;
   ctx.textAlign = "center";
-  ctx.fillText("已暂停", canvas.width / 2, canvas.height * 0.48);
+  ctx.fillText("已暂停", canvas.width / 2, canvas.height * 0.465);
+  ctx.font = `600 ${Math.floor(canvas.height * 0.028)}px sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.82)";
+  ctx.fillText("空格 / Esc 继续", canvas.width / 2, canvas.height * 0.505);
 }
 
 function syncHud() {
@@ -924,6 +1148,20 @@ function perspective(y, nearSize, farSize) {
 
 function isEffectActive(key, now = performance.now()) {
   return state.effects[key] > now;
+}
+
+function effectSecondsLeft(key, now = performance.now()) {
+  const until = state.effects[key];
+  if (!until || until <= now) return 0;
+  return Math.max(1, Math.ceil((until - now) / 1000));
+}
+
+function prefersReducedMotion() {
+  if (!window.matchMedia) return false;
+  if (!reduceMotionMq) {
+    reduceMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+  }
+  return reduceMotionMq.matches;
 }
 
 function drawMountainLayer(baseRatio, color, driftSpeed, peakHeight) {
@@ -982,7 +1220,11 @@ function resizeCanvas() {
   canvas.width = Math.floor(rect.width);
   canvas.height = Math.floor(rect.height);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  drawIdleScene("按“开始游戏”启动");
+  if (state.running) {
+    render();
+  } else {
+    drawIdleScene(idleSceneMessage);
+  }
 }
 
 async function loadImage(src) {

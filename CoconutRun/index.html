@@ -12,15 +12,47 @@
   <body>
     <div class="game-shell">
       <header class="top-bar">
-        <h1>椰子跑酷</h1>
-        <div class="hint">电脑：←/→ 或 A/D；手机：直接左右滑动换道；↑/W/J 跳跃，空格暂停</div>
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">🥥</div>
+          <div class="brand-text">
+            <h1>椰子跑酷</h1>
+            <p class="tagline">换道 · 跳跃 · 空中快落</p>
+          </div>
+        </div>
+        <div class="hint">
+          电脑：←/→ 或 A/D 换道；↑/W/J 跳跃；↓/S 空中快落；空格或 Esc 暂停；R 重开一局。手机：左右滑换道；上滑跳；下滑快落；轻点起跳。
+        </div>
       </header>
 
-      <section class="hud">
-        <div class="chip">生命：<span id="lives">5</span></div>
-        <div class="chip">金币：<span id="coins">0</span></div>
-        <div class="chip">分数：<span id="score">0</span></div>
-        <div class="chip">速度：<span id="speed">1.0</span>x</div>
+      <section class="hud" aria-label="本局数据">
+        <div class="hud-card hud-lives">
+          <span class="hud-ic" aria-hidden="true">❤</span>
+          <div class="hud-meta">
+            <span class="hud-label">生命</span>
+            <span class="hud-value" id="lives">5 / 5</span>
+          </div>
+        </div>
+        <div class="hud-card hud-coins">
+          <span class="hud-ic" aria-hidden="true">🪙</span>
+          <div class="hud-meta">
+            <span class="hud-label">金币</span>
+            <span class="hud-value" id="coins">0</span>
+          </div>
+        </div>
+        <div class="hud-card hud-score">
+          <span class="hud-ic" aria-hidden="true">★</span>
+          <div class="hud-meta">
+            <span class="hud-label">分数</span>
+            <span class="hud-value" id="score">0</span>
+          </div>
+        </div>
+        <div class="hud-card hud-speed">
+          <span class="hud-ic" aria-hidden="true">⚡</span>
+          <div class="hud-meta">
+            <span class="hud-label">节奏</span>
+            <span class="hud-value"><span id="speed">1.0</span>×</span>
+          </div>
+        </div>
       </section>
 
       <section class="arena-wrap">
@@ -30,7 +62,9 @@
 
         <div id="overlay" class="overlay show">
           <div class="panel">
+            <p class="panel-eyebrow">无尽赛道</p>
             <h2>椰子跑酷</h2>
+            <p class="panel-lead">躲开障碍、收集金币，看看你能跑多远。</p>
             <p id="status">正在准备头像与赛道...</p>
             <button id="start-btn" disabled>开始游戏</button>
           </div>
@@ -38,9 +72,9 @@
       </section>
 
       <section class="mobile-controls" aria-label="移动端控制按钮">
-        <button id="left-btn" type="button">← 左</button>
-        <button id="jump-btn" type="button">↑ 跳</button>
-        <button id="right-btn" type="button">右 →</button>
+        <button id="left-btn" type="button" class="mc-left">← 左</button>
+        <button id="jump-btn" type="button" class="mc-jump">↑ 跳</button>
+        <button id="right-btn" type="button" class="mc-right">右 →</button>
       </section>
     </div>
 
