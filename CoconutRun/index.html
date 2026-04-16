@@ -66,6 +66,36 @@
             <h2>椰子跑酷</h2>
             <p class="panel-lead">躲开障碍、收集金币，看看你能跑多远。</p>
             <p id="status">正在准备头像与赛道...</p>
+            <div class="char-pick" role="radiogroup" aria-label="选择人物">
+              <button
+                type="button"
+                class="char-opt selected"
+                data-char-pick="coconut"
+                id="pick-coconut"
+                role="radio"
+                aria-checked="true"
+              >
+                <span class="char-emoji" aria-hidden="true">🥥</span>
+                <span class="char-meta">
+                  <span class="char-name">椰子</span>
+                  <span class="char-note">芒果会来帮忙</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                class="char-opt"
+                data-char-pick="mango"
+                id="pick-mango"
+                role="radio"
+                aria-checked="false"
+              >
+                <span class="char-emoji" aria-hidden="true">🥭</span>
+                <span class="char-meta">
+                  <span class="char-name">芒果</span>
+                  <span class="char-note">椰子会来帮忙</span>
+                </span>
+              </button>
+            </div>
             <button id="start-btn" disabled>开始游戏</button>
           </div>
         </div>

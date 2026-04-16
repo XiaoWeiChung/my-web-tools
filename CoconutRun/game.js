@@ -22,10 +22,30 @@ const AVATAR_PATHS = {
   mango: "./assets/mango_source.png",
 };
 
+const RUNNER_LOOK = {
+  coconut: {
+    bodyMain: "#f7d73d",
+    bodySub: "#2f7b4e",
+    accent: "#ffffff",
+    neck: "rgba(47, 123, 78, 0.35)",
+    hand: "rgba(247, 215, 61, 0.85)",
+    shoe: "#1a3d2e",
+  },
+  mango: {
+    bodyMain: "#5ca6ff",
+    bodySub: "#2f63c2",
+    accent: "#ffffff",
+    neck: "rgba(47, 99, 194, 0.42)",
+    hand: "rgba(186, 228, 255, 0.92)",
+    shoe: "#152d52",
+  },
+};
+
 let idleSceneMessage = "按“开始游戏”启动";
 let reduceMotionMq = null;
 
 const state = {
+  playableCharacter: "coconut",
   running: false,
   paused: false,
   gameOver: false,
@@ -84,6 +104,7 @@ async function init() {
   idleSceneMessage = "正在加载头像素材...";
   resizeCanvas();
   bindEvents();
+  syncCharacterPickUi();
   setStatus("正在准备头像与赛道...");
 
   try {
@@ -148,6 +169,15 @@ function bindEvents() {
     if (!state.running || state.gameOver) {
       startGame();
     }
+  });
+
+  document.querySelectorAll("[data-char-pick]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const v = btn.getAttribute("data-char-pick");
+      if (v !== "coconut" && v !== "mango") return;
+      state.playableCharacter = v;
+      syncCharacterPickUi();
+    });
   });
 
   leftBtn.addEventListener("click", () => moveLane(-1));
@@ -246,7 +276,8 @@ function startGame() {
   overlay.classList.remove("show");
   startBtn.textContent = "再来一局";
   mobilePauseBtn.textContent = "暂停";
-  showToast("冲鸭！椰子开始跑酷啦");
+  const who = state.playableCharacter === "mango" ? "芒果" : "椰子";
+  showToast(`冲鸭！${who}开始跑酷啦`);
   syncHud();
   requestAnimationFrame(gameLoop);
 }
@@ -420,41 +451,71 @@ function updateMango(now, dt) {
   }
 }
 
+function helperName() {
+  return state.playableCharacter === "coconut" ? "芒果" : "椰子";
+}
+
+function helperLook() {
+  return RUNNER_LOOK[state.playableCharacter === "coconut" ? "mango" : "coconut"];
+}
+
+function playableLook() {
+  return RUNNER_LOOK[state.playableCharacter];
+}
+
+function playableAvatar() {
+  return state.playableCharacter === "coconut" ? assets.coconutAvatar : assets.mangoAvatar;
+}
+
+function helperAvatar() {
+  return state.playableCharacter === "coconut" ? assets.mangoAvatar : assets.coconutAvatar;
+}
+
+function syncCharacterPickUi() {
+  document.querySelectorAll("[data-char-pick]").forEach((btn) => {
+    const v = btn.getAttribute("data-char-pick");
+    const on = v === state.playableCharacter;
+    btn.classList.toggle("selected", on);
+    btn.setAttribute("aria-checked", on ? "true" : "false");
+  });
+}
+
 function triggerMangoBoost(now) {
+  const tag = `${helperName()}祝福：`;
   const boosts = [
     {
-      text: "芒果祝福：+1 生命",
+      text: `${tag}+1 生命`,
       apply: () => {
         state.lives = Math.min(5, state.lives + 1);
       },
     },
     {
-      text: "芒果祝福：障碍清空",
+      text: `${tag}障碍清空`,
       apply: () => {
         state.entities.obstacles = [];
       },
     },
     {
-      text: "芒果祝福：护盾 9 秒",
+      text: `${tag}护盾 9 秒`,
       apply: () => {
         state.effects.shieldUntil = now + 9000;
       },
     },
     {
-      text: "芒果祝福：磁铁吸金 10 秒",
+      text: `${tag}磁铁吸金 10 秒`,
       apply: () => {
         state.effects.magnetUntil = now + 10000;
       },
     },
     {
-      text: "芒果祝福：金币雨 +25",
+      text: `${tag}金币雨 +25`,
       apply: () => {
         state.coins += 25;
         state.score += 150;
       },
     },
     {
-      text: "芒果祝福：慢速安全模式 8 秒",
+      text: `${tag}慢速安全模式 8 秒`,
       apply: () => {
         state.effects.slowUntil = now + 8000;
       },
@@ -822,10 +883,8 @@ function drawPlayer() {
     x,
     y: y + bob,
     scale,
-    bodyMain: "#f7d73d",
-    bodySub: "#2f7b4e",
-    accent: "#ffffff",
-    avatar: assets.coconutAvatar,
+    look: playableLook(),
+    avatar: playableAvatar(),
     legPhase: runCycle,
     jumpHeight: state.jumpHeight,
   });
@@ -841,7 +900,8 @@ function drawPlayer() {
   }
 }
 
-function drawChibiRunner({ x, y, scale, bodyMain, bodySub, accent, avatar, legPhase, jumpHeight }) {
+function drawChibiRunner({ x, y, scale, look, avatar, legPhase, jumpHeight }) {
+  const { bodyMain, bodySub, accent, neck, hand, shoe } = look;
   const headSize = 50 * scale;
   const torsoW = 40 * scale;
   const torsoH = 46 * scale;
@@ -877,10 +937,10 @@ function drawChibiRunner({ x, y, scale, bodyMain, bodySub, accent, avatar, legPh
   ctx.lineJoin = "round";
 
   if (onGround) {
-    drawRunnerLegSegments(x - hipSpread, torsoBottom, -s, c, shin, groundFeetY, scale, bodySub);
-    drawRunnerLegSegments(x + hipSpread, torsoBottom, s, c, shin, groundFeetY, scale, bodySub);
+    drawRunnerLegSegments(x - hipSpread, torsoBottom, -s, c, shin, groundFeetY, scale, bodySub, shoe);
+    drawRunnerLegSegments(x + hipSpread, torsoBottom, s, c, shin, groundFeetY, scale, bodySub, shoe);
   } else {
-    drawJumpLegs(x, torsoBottom, scale, bodySub, air, groundFeetY, s);
+    drawJumpLegs(x, torsoBottom, scale, bodySub, air, groundFeetY, s, shoe);
   }
 
   roundRect(ctx, x - torsoW / 2, torsoTop, torsoW, torsoH, 11 * scale);
@@ -906,10 +966,10 @@ function drawChibiRunner({ x, y, scale, bodyMain, bodySub, accent, avatar, legPh
 
   if (onGround) {
     const opp = -s;
-    drawRunnerArm(shoulderLX, shoulderY, opp, scale, bodySub, armThick, upperArm, foreArm, -1);
-    drawRunnerArm(shoulderRX, shoulderY, -opp, scale, bodySub, armThick, upperArm, foreArm, 1);
+    drawRunnerArm(shoulderLX, shoulderY, opp, scale, bodySub, armThick, upperArm, foreArm, -1, hand);
+    drawRunnerArm(shoulderRX, shoulderY, -opp, scale, bodySub, armThick, upperArm, foreArm, 1, hand);
   } else {
-    drawJumpArms(shoulderLX, shoulderRX, shoulderY, scale, bodySub, armThick, upperArm, foreArm, air);
+    drawJumpArms(shoulderLX, shoulderRX, shoulderY, scale, bodySub, armThick, upperArm, foreArm, air, hand);
   }
 
   ctx.restore();
@@ -920,7 +980,7 @@ function drawChibiRunner({ x, y, scale, bodyMain, bodySub, accent, avatar, legPh
   ctx.translate(neckX, neckY);
   ctx.rotate(-lean * 0.62);
   ctx.translate(-neckX, -neckY);
-  ctx.fillStyle = "rgba(47, 123, 78, 0.35)";
+  ctx.fillStyle = neck;
   roundRect(ctx, x - 7 * scale, torsoTop - 4 * scale, 14 * scale, 8 * scale, 4 * scale);
   ctx.fill();
 
@@ -944,7 +1004,7 @@ function drawChibiRunner({ x, y, scale, bodyMain, bodySub, accent, avatar, legPh
   ctx.restore();
 }
 
-function drawRunnerLegSegments(hipX, hipY, stride, phaseCos, shinLen, footY, scale, color) {
+function drawRunnerLegSegments(hipX, hipY, stride, phaseCos, shinLen, footY, scale, color, shoeColor) {
   const kneeX = hipX + stride * 13.5 * scale;
   const kneeY = hipY + 9 * scale - Math.abs(phaseCos) * 9 * scale;
 
@@ -964,13 +1024,13 @@ function drawRunnerLegSegments(hipX, hipY, stride, phaseCos, shinLen, footY, sca
   ctx.lineTo(footX, footYUse);
   ctx.stroke();
 
-  ctx.fillStyle = "#1a3d2e";
+  ctx.fillStyle = shoeColor;
   ctx.beginPath();
   ctx.ellipse(footX, footYUse + 1.2 * scale, 5.2 * scale, 2.6 * scale, stride * 0.2, 0, Math.PI * 2);
   ctx.fill();
 }
 
-function drawJumpLegs(x, hipY, scale, color, air, groundY, s) {
+function drawJumpLegs(x, hipY, scale, color, air, groundY, s, shoeColor) {
   const tuck = air;
   const out = 10 * scale * (0.35 + tuck * 0.45);
   const lift = 16 * scale * tuck;
@@ -984,7 +1044,7 @@ function drawJumpLegs(x, hipY, scale, color, air, groundY, s) {
   ctx.stroke();
 
   if (tuck < 0.55) {
-    ctx.fillStyle = "#1a3d2e";
+    ctx.fillStyle = shoeColor;
     const fx = x + s * 3 * scale;
     ctx.beginPath();
     ctx.ellipse(fx, groundY - (1 - tuck) * 10 * scale, 5 * scale, 2.4 * scale, 0, 0, Math.PI * 2);
@@ -992,7 +1052,7 @@ function drawJumpLegs(x, hipY, scale, color, air, groundY, s) {
   }
 }
 
-function drawRunnerArm(sx, sy, swing, scale, color, thick, upper, fore, side) {
+function drawRunnerArm(sx, sy, swing, scale, color, thick, upper, fore, side, handColor) {
   const swingRad = swing * 0.62;
   const elbowX = sx + Math.sin(swingRad) * upper * side;
   const elbowY = sy + Math.cos(swingRad) * upper * 0.85;
@@ -1007,13 +1067,13 @@ function drawRunnerArm(sx, sy, swing, scale, color, thick, upper, fore, side) {
   ctx.lineTo(handX, handY);
   ctx.stroke();
 
-  ctx.fillStyle = "rgba(247, 215, 61, 0.85)";
+  ctx.fillStyle = handColor;
   ctx.beginPath();
   ctx.arc(handX, handY, 3.2 * scale, 0, Math.PI * 2);
   ctx.fill();
 }
 
-function drawJumpArms(slX, srX, sy, scale, color, thick, upper, fore, air) {
+function drawJumpArms(slX, srX, sy, scale, color, thick, upper, fore, air, handColor) {
   const reach = (0.55 + air * 0.4) * upper;
   ctx.strokeStyle = color;
   ctx.lineWidth = thick;
@@ -1024,7 +1084,7 @@ function drawJumpArms(slX, srX, sy, scale, color, thick, upper, fore, air) {
   ctx.lineTo(srX + reach * 0.75, sy - reach * 0.55 - air * 6 * scale);
   ctx.stroke();
 
-  ctx.fillStyle = "rgba(247, 215, 61, 0.85)";
+  ctx.fillStyle = handColor;
   ctx.beginPath();
   ctx.arc(slX - reach * 0.75, sy - reach * 0.55 - air * 6 * scale, 3 * scale, 0, Math.PI * 2);
   ctx.arc(srX + reach * 0.75, sy - reach * 0.55 - air * 6 * scale, 3 * scale, 0, Math.PI * 2);
@@ -1035,32 +1095,35 @@ function drawMango() {
   if (!state.mango.active) return;
   const x = state.mango.x;
   const y = state.mango.y;
+  const look = helperLook();
 
   drawChibiRunner({
     x,
     y,
     scale: 0.86,
-    bodyMain: "#5ca6ff",
-    bodySub: "#2f63c2",
-    accent: "#ffffff",
-    avatar: assets.mangoAvatar,
+    look,
+    avatar: helperAvatar(),
     legPhase: (state.elapsedMs / 1000) * (Math.PI * 2) * 3.6 + 1.2,
     jumpHeight: 0,
   });
 
+  const hname = helperName();
+  const tag = `${hname}祝福：`;
+  const line2 = state.mango.text.startsWith(tag) ? state.mango.text.slice(tag.length) : state.mango.text;
+
   roundRect(ctx, x + 24, y - 95, 250, 46, 14);
   ctx.fillStyle = "rgba(255,255,255,0.88)";
   ctx.fill();
-  ctx.strokeStyle = "#ffd16a";
+  ctx.strokeStyle = state.playableCharacter === "coconut" ? "#ffd16a" : "#7ec4ff";
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.fillStyle = "#6a4a3e";
   ctx.font = "700 16px sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText("芒果来帮忙啦！", x + 36, y - 75);
+  ctx.fillText(`${hname}来帮忙啦！`, x + 36, y - 75);
   ctx.font = "600 13px sans-serif";
   ctx.fillStyle = "#835843";
-  ctx.fillText(state.mango.text.replace("芒果祝福：", ""), x + 36, y - 58);
+  ctx.fillText(line2, x + 36, y - 58);
 }
 
 function drawEffectsBadges() {
