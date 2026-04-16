@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+    />
+    <title>椰子拼图</title>
+    <link rel="stylesheet" href="./style.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥥</text></svg>"
+    />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top-bar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">🥥</div>
+          <div class="brand-text">
+            <h1>椰子拼图</h1>
+            <p class="tagline">照片 · 异形块 · 慢慢拼</p>
+          </div>
+        </div>
+        <p class="hint">
+          可先选内置卡通图、上传照片或从历史选图，再选块数。拖动碎片到中间底板；可开关半透明参考图。
+        </p>
+      </header>
+
+      <!-- 首页 -->
+      <section id="screen-home" class="screen">
+        <div class="card hero-card">
+          <p class="eyebrow">开始一局</p>
+          <h2>上传你的照片</h2>
+          <p class="lead">相册上传会保存到历史；比例不会变形，记录只存在本机。</p>
+          <div class="row-actions">
+            <label class="btn primary">
+              <input
+                id="file-input"
+                type="file"
+                accept="image/*"
+                hidden
+              />
+              <span>📷 上传照片</span>
+            </label>
+            <button type="button" class="btn ghost" id="btn-open-history">
+              🗂 历史记录
+            </button>
+          </div>
+        </div>
+
+        <div class="card builtin-card">
+          <p class="eyebrow">不用上传也能玩</p>
+          <h2 class="builtin-title">精选卡通图</h2>
+          <p class="lead small-gap">
+            点一张马上进入选块数（以下为内置卡通图，不会写入历史）。
+          </p>
+          <div id="builtin-grid" class="builtin-grid" role="list"></div>
+        </div>
+      </section>
+
+      <!-- 选块数 -->
+      <section id="screen-pick" class="screen hidden">
+        <div class="card">
+          <div class="pick-head">
+            <button type="button" class="btn text" id="btn-pick-back">← 返回</button>
+            <p class="eyebrow">第二步</p>
+          </div>
+          <h2>要拼几块？</h2>
+          <p class="muted small">
+            竖屏与横屏会自动调整行列；碎片为传统凹凸异形。
+          </p>
+          <div id="pick-preview-wrap" class="preview-wrap"></div>
+          <div class="count-grid" id="count-grid" role="group" aria-label="块数">
+            <button type="button" class="count-btn" data-count="4">4 块</button>
+            <button type="button" class="count-btn" data-count="8">8 块</button>
+            <button type="button" class="count-btn" data-count="16">16 块</button>
+            <button type="button" class="count-btn" data-count="32">32 块</button>
+          </div>
+          <button type="button" class="btn primary wide" id="btn-start-play" disabled>
+            🧩 开始拼图
+          </button>
+        </div>
+      </section>
+
+      <!-- 游戏中 -->
+      <section id="screen-play" class="screen hidden">
+        <div class="play-toolbar">
+          <button type="button" class="btn text" id="btn-play-back">← 退出本局</button>
+          <div class="play-stats">
+            <span class="pill" id="stat-time">时间 0:00</span>
+            <span class="pill" id="stat-moves">步数 0</span>
+            <span class="pill soft" id="stat-progress">进度 0 / 0</span>
+          </div>
+          <div class="play-actions">
+            <button type="button" class="btn small ghost" id="btn-toggle-ghost" aria-pressed="true">
+              👻 参考图
+            </button>
+            <button type="button" class="btn small ghost" id="btn-reshuffle">
+              🔀 重洗碎片
+            </button>
+          </div>
+        </div>
+
+        <div class="board-wrap" id="board-wrap">
+          <div class="board-frame" id="board-frame">
+            <div class="board-inner" id="board-inner">
+              <img id="ghost-img" class="ghost-img" alt="" />
+              <div id="slots-layer" class="slots-layer"></div>
+              <div id="pieces-layer" class="pieces-layer"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tray-wrap">
+          <div class="tray-head">
+            <span class="tray-title">碎片池</span>
+            <span class="tray-hint">拖动到上方底板；靠近正确位置会自动吸附</span>
+          </div>
+          <div id="tray" class="tray"></div>
+        </div>
+
+        <div id="win-overlay" class="win-overlay hidden" role="dialog" aria-modal="true">
+          <div class="win-card">
+            <p class="eyebrow">完成啦</p>
+            <h2>🎉 拼好了！</h2>
+            <p class="win-meta" id="win-meta"></p>
+            <div class="row-actions center">
+              <button type="button" class="btn primary" id="btn-win-again">再拼一局</button>
+              <button type="button" class="btn ghost" id="btn-win-home">回首页</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 历史弹层 -->
+      <div id="history-overlay" class="overlay hidden" aria-hidden="true">
+        <div class="overlay-panel">
+          <div class="overlay-head">
+            <h2>历史记录</h2>
+            <button type="button" class="icon-btn" id="btn-history-close" aria-label="关闭">
+              ✕
+            </button>
+          </div>
+          <p class="muted small">
+            最多保留 50 张；超出会自动删掉最旧的。可删除单条或清空全部。
+          </p>
+          <div class="history-actions">
+            <button type="button" class="btn small danger ghost" id="btn-history-clear">
+              清空全部
+            </button>
+          </div>
+          <div id="history-list" class="history-list"></div>
+          <p id="history-empty" class="muted small hidden">还没有记录，先上传一张照片吧～</p>
+        </div>
+      </div>
+
+      <div id="toast" class="toast" role="status"></div>
+    </div>
+
+    <script src="./game.js"></script>
+  </body>
+</html>
