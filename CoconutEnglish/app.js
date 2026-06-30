@@ -104,11 +104,17 @@
     try {
       window.speechSynthesis.cancel(); // 防止排队堆叠
       var u = new SpeechSynthesisUtterance(text);
-      if (curVoice) { u.voice = curVoice; u.lang = curVoice.lang; }
-      else { u.lang = 'en-US'; }
+      u.lang = 'en-US';
       u.rate = 0.9;
       u.pitch = 1.0;
       u.volume = 1.0;
+      // iOS Safari workaround: 先设所有参数，最后设 voice
+      // 并重新从 voices 列表获取引用（iOS 有时会丢失引用）
+      if (curVoice) {
+        var fresh = (window.speechSynthesis.getVoices() || [])
+          .filter(function (v) { return v.voiceURI === curVoice.voiceURI; })[0];
+        if (fresh) { u.voice = fresh; u.lang = fresh.lang; }
+      }
       window.speechSynthesis.speak(u);
     } catch (e) { /* 静默降级 */ }
   }
@@ -238,30 +244,14 @@
   var abcMode = 'letter';
   try { abcMode = localStorage.getItem('ce_abc_mode') || 'letter'; } catch (e) {}
 
-  // 自然拼读：每个字母的主要发音拟声（TTS 读不了音标，用近似拼写引导发音）
-  var PHONICS = {
-    A: 'ah', B: 'buh', C: 'kuh', D: 'duh', E: 'eh', F: 'fff', G: 'guh',
-    H: 'huh', I: 'ih', J: 'juh', K: 'kuh', L: 'lll', M: 'mmm', N: 'nnn',
-    O: 'awh', P: 'puh', Q: 'kwuh', R: 'rrr', S: 'sss', T: 'tuh', U: 'uh',
-    V: 'vvv', W: 'wuh', X: 'ks', Y: 'yuh', Z: 'zzz'
-  };
-
-  // 字母名的正确英文拼读（确保 TTS 读字母名而非把单字母当单词）
-  var LETTER_NAMES = {
-    A:'ay', B:'bee', C:'see', D:'dee', E:'ee', F:'ef', G:'jee',
-    H:'aitch', I:'eye', J:'jay', K:'kay', L:'el', M:'em', N:'en',
-    O:'oh', P:'pee', Q:'cue', R:'are', S:'ess', T:'tee', U:'you',
-    V:'vee', W:'double you', X:'ex', Y:'why', Z:'zee'
-  };
-
   function sayLetter(letter, word) {
+    // A 和 G 单独处理：TTS 容易把 A 读成 "uh"、G 读成 "see" 的音
+    var fix = { A: 'ay', G: 'jee' };
+    var spoken = fix[letter] || letter;
     if (abcMode === 'word') {
-      speak(letter + '. ' + word);
-    } else if (abcMode === 'phonics') {
-      var sound = PHONICS[letter] || letter;
-      speak(letter + '. ' + sound + '. ' + word);
+      speak(spoken + '. ' + word);
     } else {
-      speak(letter); // 只读字母
+      speak(spoken); // 只读字母
     }
   }
 
