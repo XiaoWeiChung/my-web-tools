@@ -246,14 +246,24 @@
     V: 'vvv', W: 'wuh', X: 'ks', Y: 'yuh', Z: 'zzz'
   };
 
+  // 字母名的正确英文拼读（确保 TTS 读字母名而非把单字母当单词）
+  var LETTER_NAMES = {
+    A:'ay', B:'bee', C:'see', D:'dee', E:'ee', F:'ef', G:'jee',
+    H:'aitch', I:'eye', J:'jay', K:'kay', L:'el', M:'em', N:'en',
+    O:'oh', P:'pee', Q:'cue', R:'are', S:'ess', T:'tee', U:'you',
+    V:'vee', W:'double you', X:'ex', Y:'why', Z:'zee'
+  };
+
   function sayLetter(letter, word) {
+    var name = LETTER_NAMES[letter] || letter;
     if (abcMode === 'word') {
-      speak(letter + ', ' + word);
+      speak(name + '. ' + word);
     } else if (abcMode === 'phonics') {
-      // 先读字母名，再读它的发音和例词，如 "A. /ah/. Apple"
-      speak(letter + '. ' + (PHONICS[letter] || letter) + '. ' + word);
+      // 自然拼读：字母名 → 发音 → 例词
+      var sound = PHONICS[letter] || letter;
+      speak(name + '. ' + sound + '. ' + word);
     } else {
-      speak(letter); // 只读字母
+      speak(name); // 只读字母名
     }
   }
 
