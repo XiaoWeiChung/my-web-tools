@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>椰子英语乐园 · Coconut English</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg"></div>
+
+  <main class="app">
+    <header class="top-bar">
+      <div class="brand">
+        <span class="avatar">🥥</span>
+        <div class="brand-text">
+          <h1>椰子英语乐园</h1>
+          <p>Coconut English · 幼儿英语启蒙</p>
+        </div>
+      </div>
+      <div class="header-controls">
+        <select id="voiceSelect" class="voice-select" title="选择朗读嗓音" aria-label="选择朗读嗓音"></select>
+        <button id="soundToggle" class="sound-btn" title="声音开关" aria-label="声音开关">🔊</button>
+      </div>
+    </header>
+
+    <!-- 首页 -->
+    <section class="screen" id="homeScreen">
+      <h2 class="screen-title">今天想玩什么呀？</h2>
+      <div class="menu-grid">
+        <button class="menu-card" data-go="topic">
+          <span class="menu-icon" data-icon="apple"></span>
+          <span class="menu-label">单词乐园</span>
+          <span class="menu-sub">Words</span>
+        </button>
+        <button class="menu-card" data-go="abc">
+          <span class="menu-icon" data-icon="abc"></span>
+          <span class="menu-label">字母 ABC</span>
+          <span class="menu-sub">Alphabet</span>
+        </button>
+        <button class="menu-card" data-go="game">
+          <span class="menu-icon" data-icon="game"></span>
+          <span class="menu-label">听音找图</span>
+          <span class="menu-sub">Listen &amp; Find</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- 主题选择 -->
+    <section class="screen hidden" id="topicScreen">
+      <button class="back-btn" data-go="home">← 返回</button>
+      <h2 class="screen-title">选一个主题吧</h2>
+      <div class="topic-grid" id="topicGrid"></div>
+    </section>
+
+    <!-- 单词卡 -->
+    <section class="screen hidden" id="wordScreen">
+      <button class="back-btn" data-go="topic">← 返回</button>
+      <h2 class="screen-title" id="wordTopicTitle"></h2>
+      <div class="card-grid" id="wordGrid"></div>
+    </section>
+
+    <!-- 字母 ABC -->
+    <section class="screen hidden" id="abcScreen">
+      <button class="back-btn" data-go="home">← 返回</button>
+      <h2 class="screen-title">点字母听发音 🔤</h2>
+      <div class="abc-mode" id="abcMode">
+        <span class="abc-mode-label">朗读模式：</span>
+        <button class="mode-btn" data-mode="letter">只读字母</button>
+        <button class="mode-btn" data-mode="word">字母+单词</button>
+        <button class="mode-btn" data-mode="phonics">自然拼读</button>
+      </div>
+      <div class="abc-grid" id="abcGrid"></div>
+    </section>
+
+    <!-- 听音找图 -->
+    <section class="screen hidden" id="gameScreen">
+      <button class="back-btn" data-go="home">← 返回</button>
+      <div class="game-hud">
+        <span class="score-box">⭐ <span id="gameScore">0</span></span>
+        <button class="replay-btn" id="replaySound">🔊 再听一次</button>
+      </div>
+      <h2 class="screen-title">听一听，点出正确的图片！</h2>
+      <div class="game-grid" id="gameGrid"></div>
+      <div class="game-feedback" id="gameFeedback"></div>
+    </section>
+  </main>
+
+  <!-- 休息提醒弹框 -->
+  <div class="modal-overlay hidden" id="breakModal">
+    <div class="modal-card">
+      <div class="modal-icon" data-icon="rest"></div>
+      <h2>休息一下眼睛吧！</h2>
+      <p>已经玩了 20 分钟啦，<br>看看远方，眨眨眼睛，<br>休息好再回来和椰子玩～</p>
+      <button class="primary-btn" id="breakOkBtn">好的 👌</button>
+    </div>
+  </div>
+
+  <script src="icons.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
