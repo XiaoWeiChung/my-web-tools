@@ -245,13 +245,20 @@
   try { abcMode = localStorage.getItem('ce_abc_mode') || 'letter'; } catch (e) {}
 
   function sayLetter(letter, word) {
-    // A 和 G 单独处理：TTS 容易把 A 读成 "uh"、G 读成 "see" 的音
-    var fix = { A: 'ay', G: 'jee' };
-    var spoken = fix[letter] || letter;
+    // 微信 WebView 等部分 TTS 引擎对单字母会加前缀或误读
+    // 用完整的字母音节拼写，确保任何引擎都能正确朗读字母名
+    var NAMES = {
+      A:'ay', B:'bee', C:'see', D:'dee', E:'ee', F:'eff',
+      G:'jee', H:'aitch', I:'eye', J:'jay', K:'kay', L:'ell',
+      M:'em', N:'en', O:'oh', P:'pee', Q:'queue', R:'are',
+      S:'ess', T:'tee', U:'you', V:'vee', W:'double you',
+      X:'ex', Y:'why', Z:'zee'
+    };
+    var spoken = NAMES[letter] || letter;
     if (abcMode === 'word') {
       speak(spoken + '. ' + word);
     } else {
-      speak(spoken); // 只读字母
+      speak(spoken);
     }
   }
 
