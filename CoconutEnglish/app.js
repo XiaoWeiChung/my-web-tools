@@ -255,15 +255,13 @@
   };
 
   function sayLetter(letter, word) {
-    var name = LETTER_NAMES[letter] || letter;
     if (abcMode === 'word') {
-      speak(name + '. ' + word);
+      speak(letter + '. ' + word);
     } else if (abcMode === 'phonics') {
-      // 自然拼读：字母名 → 发音 → 例词
       var sound = PHONICS[letter] || letter;
-      speak(name + '. ' + sound + '. ' + word);
+      speak(letter + '. ' + sound + '. ' + word);
     } else {
-      speak(name); // 只读字母名
+      speak(letter); // 只读字母
     }
   }
 
